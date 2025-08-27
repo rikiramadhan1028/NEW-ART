@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* NFT Art Generator Premium Theme */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 263 70% 50.4%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 263 85% 70%;
+
+    --secondary: 240 5.9% 10%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 5.9% 10%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 263 70% 50.4%;
+    --accent-foreground: 0 0% 98%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 355.7 100% 97.3%;
+
+    --warning: 32 95% 44%;
+    --warning-foreground: 355.7 100% 97.3%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 20%;
+    --input: 240 5.9% 20%;
+    --ring: 263 70% 50.4%;
+
+    --radius: 1rem;
+
+    /* Premium Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-hero: linear-gradient(135deg, hsl(263 70% 50.4%) 0%, hsl(300 85% 60%) 50%, hsl(340 82% 65%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(240 10% 6%) 0%, hsl(240 8% 8%) 100%);
+    --gradient-accent: linear-gradient(90deg, hsl(var(--accent)) 0%, hsl(var(--primary-glow)) 100%);
+    
+    /* Premium Shadows */
+    --shadow-premium: 0 25px 50px -12px hsl(var(--primary) / 0.4);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.3);
+    --shadow-card: 0 10px 30px -10px hsl(0 0% 0% / 0.4);
+    
+    /* Animation */
+    --transition-premium: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(240 5% 96%) 100%);
+    --shadow-card: 0 10px 30px -10px hsl(240 5% 10% / 0.1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(240 8% 6%) 100%);
+    min-height: 100vh;
+  }
+
+  /* Premium glassmorphism effects */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glow-effect {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .premium-gradient {
+    background: var(--gradient-primary);
+  }
+
+  .hero-gradient {
+    background: var(--gradient-hero);
+  }
+
+  .card-gradient {
+    background: var(--gradient-card);
+  }
+
+  /* Smooth transitions */
+  .transition-premium {
+    transition: var(--transition-premium);
+  }
+
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  /* Custom animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--primary-glow) / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(var(--primary-glow) / 0.6); }
+  }
+
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .pulse-glow-animation {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+}
