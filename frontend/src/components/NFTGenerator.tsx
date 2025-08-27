@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,6 +67,7 @@ const NFTGenerator = () => {
   const [nftCount, setNftCount] = useState(0);
   const [assetZipFile, setAssetZipFile] = useState<File | null>(null);
   const [compressImages, setCompressImages] = useState(false);
+  const [outputFormat, setOutputFormat] = useState('png');
   const [generationStatus, setGenerationStatus] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [downloadLink, setDownloadLink] = useState('');
@@ -165,6 +167,7 @@ const NFTGenerator = () => {
     formData.append('assetsZip', assetZipFile);
     formData.append('userAddress', address || '0x');
     formData.append('compressImages', String(compressImages));
+    formData.append('outputFormat', outputFormat);
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/generate`, {
@@ -541,7 +544,7 @@ const NFTGenerator = () => {
                     <h3 className="text-lg font-semibold mb-2">Upload Assets ZIP File</h3>
                     <p className="text-muted-foreground mb-4">
                       Upload one ZIP file containing all your layer folders (e.g., Backgrounds/, Bodies/, Eyes/).
-                      All images should be PNG/JPG/JPEG format.
+                      All images should be PNG/JPG/JPEG/GIF format.
                     </p>
                     <input
                       type="file"
@@ -575,6 +578,26 @@ const NFTGenerator = () => {
                   <p className="text-sm text-muted-foreground">
                     If enabled, the final generated NFT images will be optimized for smaller file sizes.
                   </p>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="output-format" className="text-sm font-medium">
+                      Output Image Format
+                    </Label>
+                    <Select value={outputFormat} onValueChange={setOutputFormat}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select output format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="png">PNG (Best Quality)</SelectItem>
+                        <SelectItem value="jpg">JPG (Smaller Size)</SelectItem>
+                        <SelectItem value="jpeg">JPEG (Smaller Size)</SelectItem>
+                        <SelectItem value="gif">GIF (Animation Support)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Choose GIF if your source images are animated GIFs and you want to preserve animation.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

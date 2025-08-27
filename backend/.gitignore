@@ -22,6 +22,8 @@
 /job_data
 /temp_user_assets
 /uploads_temp
+.claude
+claude/
 
 # misc
 .DS_Store

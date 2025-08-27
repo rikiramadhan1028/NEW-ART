@@ -20,7 +20,7 @@ const whitelistContract = new ethers.Contract(
 
 
 exports.requestGeneration = async (req, res) => {
-  const { nftCount, collectionName, collectionDescription, baseIpfsImageUrl, baseExternalUrl, userAddress, compressImages } = req.body;
+  const { nftCount, collectionName, collectionDescription, baseIpfsImageUrl, baseExternalUrl, userAddress, compressImages, outputFormat } = req.body;
   const uploadedFile = req.file;
 
   const shouldOptimizeFileSize = (compressImages === 'true'); 
@@ -63,7 +63,7 @@ exports.requestGeneration = async (req, res) => {
 
     const layersConfig = await buildLayersConfig(jobInputLayersDir); 
     if (layersConfig.length === 0) {
-      throw new Error("No valid image files (PNG/JPG/JPEG) found in the uploaded zip file.");
+      throw new Error("No valid image files (PNG/JPG/JPEG/GIF) found in the uploaded zip file.");
     }
     
     await generationQueue.add('generate-nft-job', {
@@ -78,6 +78,7 @@ exports.requestGeneration = async (req, res) => {
       jobInputLayersDir: jobInputLayersDir,
       jobGeneratedOutputDir: jobGeneratedOutputDir,
       compressImages: shouldOptimizeFileSize,
+      outputFormat: outputFormat || 'png',
     }, { jobId: jobId });
 
     res.status(202).json({
@@ -105,7 +106,7 @@ async function buildLayersConfig(assetsPath) {
             
             const traits = [];
             for (const file of traitFiles) {
-                if (file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg')) {
+                if (file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.gif')) {
                     const filePath = path.join(layerDirPath, file);
                     try {
                         await sharp(filePath).metadata(); 

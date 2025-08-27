@@ -21,12 +21,21 @@ const jobResults = {};
 
 // Helper function to apply file size compression to a single image file
 async function compressImageFile(filePath) {
-    const outputBuffer = await sharp(filePath)
-        .toFormat(path.extname(filePath).toLowerCase() === '.png' ? 'png' : 'jpeg', {
-            quality: 80,
-            compressionLevel: 9
-        })
-        .toBuffer();
+    const ext = path.extname(filePath).toLowerCase();
+    let outputBuffer;
+
+    if (ext === '.png') {
+        outputBuffer = await sharp(filePath).png({ quality: 80, compressionLevel: 9 }).toBuffer();
+    } else if (ext === '.jpg' || ext === '.jpeg') {
+        outputBuffer = await sharp(filePath).jpeg({ quality: 80 }).toBuffer();
+    } else if (ext === '.gif') {
+        // For GIFs, we can optimize by adjusting effort or other GIF-specific options
+        // This preserves animation.
+        outputBuffer = await sharp(filePath, { animated: true }).gif({ effort: 10 }).toBuffer();
+    } else {
+        console.log(`[Worker] Skipping compression for unsupported file type: ${filePath}`);
+        return; // Skip unsupported formats
+    }
     
     await fs.writeFile(filePath, outputBuffer);
     console.log(`[Worker] Optimized file size for: ${filePath}`);
@@ -39,7 +48,7 @@ async function compressImagesInDirectory(directoryPath) {
         const fullPath = path.join(directoryPath, dirent.name);
         if (dirent.isDirectory()) {
             await compressImagesInDirectory(fullPath);
-        } else if (dirent.isFile() && (dirent.name.endsWith('.png') || dirent.name.endsWith('.jpg') || dirent.name.endsWith('.jpeg'))) {
+        } else if (dirent.isFile() && ['.png', '.jpg', '.jpeg', '.gif'].includes(path.extname(dirent.name).toLowerCase())) {
             await compressImageFile(fullPath);
         }
     }
@@ -47,7 +56,8 @@ async function compressImagesInDirectory(directoryPath) {
 
 
 const generationWorker = new Worker('nft-generation', async (job) => {
-  const { jobId, nftCount, userAddress, collectionName, collectionDescription, layersConfig, jobInputLayersDir, jobGeneratedOutputDir, compressImages, baseExternalUrl } = job.data;
+  // Destructure 'outputFormat' from job data
+  const { jobId, nftCount, userAddress, collectionName, collectionDescription, layersConfig, jobInputLayersDir, jobGeneratedOutputDir, compressImages, baseExternalUrl, outputFormat } = job.data;
   const IMAGES_LOCAL_PATH = path.join(jobGeneratedOutputDir, "images");
   const METADATA_LOCAL_PATH = path.join(jobGeneratedOutputDir, "metadata");
 
@@ -62,7 +72,8 @@ const generationWorker = new Worker('nft-generation', async (job) => {
       layersConfig,
       jobInputLayersDir,
       outputJobDir: jobGeneratedOutputDir,
-      baseExternalUrl
+      baseExternalUrl,
+      outputFormat // Pass the output format to the generator
     });
     console.log(`[Worker ${jobId}] Image generation complete.`);
     
