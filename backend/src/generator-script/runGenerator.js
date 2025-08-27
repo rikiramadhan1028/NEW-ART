@@ -1,6 +1,32 @@
 const sharp = require('sharp');
 const fs = require('fs').promises;
 const path = require('path');
+const AdmZip = require('adm-zip'); // Diperlukan untuk menangani file ZIP
+
+// Fungsi pembantu untuk mendapatkan buffer gambar dari path,
+// bisa dari file biasa atau dari dalam arsip ZIP.
+async function getBufferFromPath(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.zip') {
+        // Asumsi: kita mencari file gambar pertama yang didukung di dalam ZIP.
+        const zip = new AdmZip(filePath);
+        const zipEntries = zip.getEntries();
+        const imageEntry = zipEntries.find(entry => {
+            const entryExt = path.extname(entry.entryName).toLowerCase();
+            return ['.gif', '.png', '.jpg', '.jpeg'].includes(entryExt);
+        });
+
+        if (imageEntry) {
+            console.log(`[Generator] Mengekstrak gambar dari ZIP: ${imageEntry.entryName}`);
+            return imageEntry.getData(); // Mengembalikan Buffer
+        } else {
+            throw new Error(`Tidak ada file gambar yang didukung (.gif, .png, .jpg) ditemukan di arsip zip '${filePath}'`);
+        }
+    } else {
+        return fs.readFile(filePath);
+    }
+}
+
 
 async function generateCollection({
   nftCount,
@@ -8,6 +34,7 @@ async function generateCollection({
   collectionDescription,
   baseIpfsImageUrl = "ipfs://YOUR_IPFS_CID_PLACEHOLDER/",
   baseExternalUrl,
+  outputFormat = 'png', // Tambahkan parameter format output, default 'png'
   layersConfig,
   jobInputLayersDir,
   outputJobDir
@@ -54,15 +81,18 @@ async function generateCollection({
     currentNftCount++;
 
     try {
-        const imageOutputPath = path.join(IMAGES_DIR, `${nftId}.png`);
-        await generateImage(selectedLayerPaths, imageOutputPath);
+        // Gunakan outputFormat untuk menentukan ekstensi file
+        const imageOutputPath = path.join(IMAGES_DIR, `${nftId}.${outputFormat}`);
+        // Teruskan outputFormat ke fungsi generateImage
+        await generateImage(selectedLayerPaths, imageOutputPath, outputFormat);
         
         const external_url = baseExternalUrl ? `${baseExternalUrl}` : undefined;
 
         const metadata = {
             name: `${collectionName} #${nftId}`,
             description: collectionDescription,
-            image: `${baseIpfsImageUrl}${nftId}.png`,
+            // Sesuaikan juga ekstensi file di metadata
+            image: `${baseIpfsImageUrl}${nftId}.${outputFormat}`,
             external_url: external_url,
             attributes: selectedTraits
         };
@@ -98,34 +128,77 @@ function getRandomTrait(traits) {
   return traits[traits.length - 1];
 }
 
-async function generateImage(selectedLayerPaths, outputPath) {
+async function generateImage(selectedLayerPaths, outputPath, format = 'png') {
     if (selectedLayerPaths.length === 0) {
         throw new Error("No layers selected for composition.");
     }
     
     const targetDimension = 1000;
 
-    let baseImageBuffer = await sharp(selectedLayerPaths[0].path)
-        .resize(targetDimension, targetDimension, { fit: 'cover', position: 'centre' })
-        .toBuffer();
+    // Dapatkan buffer untuk gambar dasar, tangani file ZIP
+    const baseImageBuffer = await getBufferFromPath(selectedLayerPaths[0].path);
+
+    // Inisialisasi sharp untuk gambar dasar.
+    // `{ animated: true }` penting untuk mempertahankan animasi jika gambar dasar adalah GIF.
+    let baseSharpInstance = sharp(baseImageBuffer, { animated: true });
+
+    // Baca dan cetak metadata jika gambar dasar adalah GIF
+    const baseImageMetadata = await baseSharpInstance.metadata();
+    if (baseImageMetadata.format === 'gif') {
+        console.log(`[Generator] Metadata for base GIF layer:`, {
+            width: baseImageMetadata.width,
+            height: baseImageMetadata.height,
+            pages: baseImageMetadata.pages, // Jumlah frame
+            loop: baseImageMetadata.loop,   // Jumlah loop (0 = tak terbatas)
+            delay: baseImageMetadata.delay  // Durasi per frame
+        });
+    }
+
+    // Resize gambar dasar
+    baseSharpInstance = baseSharpInstance.resize(targetDimension, targetDimension, { fit: 'cover', position: 'centre' });
 
     const composites = [];
     for (let i = 1; i < selectedLayerPaths.length; i++) {
-        const layerBuffer = await sharp(selectedLayerPaths[i].path)
+        // Dapatkan buffer untuk setiap layer, tangani file ZIP
+        const layerBuffer = await getBufferFromPath(selectedLayerPaths[i].path);
+
+        // Baca dan cetak metadata jika layer adalah GIF
+        const layerMetadata = await sharp(layerBuffer).metadata();
+        if (layerMetadata.format === 'gif') {
+            console.log(`[Generator] Metadata for overlay GIF layer '${selectedLayerPaths[i].layerName}':`, {
+                pages: layerMetadata.pages
+            });
+            // Peringatan: sharp.composite() hanya akan menggunakan frame pertama dari overlay GIF.
+            if (layerMetadata.pages > 1) {
+                console.warn(`[Generator] Warning: Overlay layer '${selectedLayerPaths[i].layerName}' is an animated GIF. Only the first frame will be used in the composition.`);
+            }
+        }
+
+        // Resize layer dan tambahkan ke komposisi
+        const resizedLayerBuffer = await sharp(layerBuffer)
             .resize(targetDimension, targetDimension, { fit: 'cover', position: 'centre' })
             .toBuffer();
         composites.push({
-            input: layerBuffer,
+            input: resizedLayerBuffer,
             blend: 'over'
         });
     }
 
-    let composer = sharp(baseImageBuffer);
+    let composer = baseSharpInstance;
     if (composites.length > 0) {
         composer = composer.composite(composites);
     }
     
-    await composer.png().toFile(outputPath);
+    // Pilih format output berdasarkan parameter
+    if (format.toLowerCase() === 'gif') {
+        console.log(`[Generator] Saving image as GIF: ${outputPath}`);
+        // Jika gambar dasar adalah GIF animasi, output juga akan animasi.
+        // Jika tidak, akan menjadi GIF statis.
+        await composer.gif().toFile(outputPath);
+    } else {
+        console.log(`[Generator] Saving image as PNG: ${outputPath}`);
+        await composer.png().toFile(outputPath);
+    }
 }
 
 module.exports = { generateCollection };
